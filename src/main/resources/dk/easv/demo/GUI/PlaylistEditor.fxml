@@ -29,7 +29,7 @@
         <Button text="Remove from Playlist" onAction="#removeSongFromPlaylist" prefWidth="120"/>
         <Button text="Save Playlist" onAction="#savePlaylist" prefWidth="120"
                 style="-fx-background-color: #4CAF50; -fx-text-fill: white;"/>
-        <Button text="Cancel" onAction="#cancel" prefWidth="120"
+        <Button fx:id="cancelButton" text="Cancel" onAction="#cancel" prefWidth="120"
                 style="-fx-background-color: #f44336; -fx-text-fill: white;"/>
     </HBox>
 

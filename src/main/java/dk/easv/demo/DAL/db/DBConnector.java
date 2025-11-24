@@ -1,5 +1,6 @@
 package dk.easv.demo.DAL.db;
 
+// Java standard
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -7,13 +8,16 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
-
+/**
+ * Manages database connections and configuration
+ */
 public class DBConnector {
     private static final String PROP_FILE = "src/main/resources/database.properties";
     private static String url;
     private static String user;
     private static String password;
 
+    // Load config when class first used
     static {
         try {
             initializeConnection();
@@ -23,10 +27,10 @@ public class DBConnector {
         }
     }
 
+    // Read database config from properties file
     private static void initializeConnection() throws IOException, ClassNotFoundException {
         Properties databaseProperties = new Properties();
 
-        // Load properties from file
         File propFile = new File(PROP_FILE);
         if (!propFile.exists()) {
             throw new IOException("Database properties file not found: " + PROP_FILE);
@@ -34,7 +38,6 @@ public class DBConnector {
 
         databaseProperties.load(Files.newInputStream(propFile.toPath()));
 
-        // Get properties
         String server = databaseProperties.getProperty("Server");
         String database = databaseProperties.getProperty("Database");
         user = databaseProperties.getProperty("User");
@@ -44,19 +47,16 @@ public class DBConnector {
             throw new IOException("Missing required database properties in " + PROP_FILE);
         }
 
-        // Build connection URL (SQL Server format)
+        // Build SQL Server connection URL
         url = String.format("jdbc:sqlserver://%s:1433;databaseName=%s;encrypt=true;trustServerCertificate=true;loginTimeout=5",
                 server, database);
 
-        // Load SQL Server driver
+        // Load JDBC driver
         Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
 
         System.out.println("Database configuration loaded successfully");
-        System.out.println("Server: " + server);
-        System.out.println("Database: " + database);
-        System.out.println("User: " + user);
 
-        // Test connection
+        // Test connection on startup
         if (testConnection()) {
             System.out.println("Database connection test: SUCCESS");
         } else {
@@ -64,6 +64,7 @@ public class DBConnector {
         }
     }
 
+    // Get database connection
     public static Connection getConnection() throws SQLException {
         if (url == null) {
             throw new SQLException("Database not initialized. Check database configuration.");
@@ -75,7 +76,7 @@ public class DBConnector {
         return conn;
     }
 
-    // Test connection method
+    // Test if database is accessible
     public static boolean testConnection() {
         try (Connection conn = getConnection()) {
             return conn != null && !conn.isClosed();

@@ -1,24 +1,26 @@
 package dk.easv.demo.BE;
 
-import javafx.beans.property.SimpleIntegerProperty;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.property.StringProperty;
-import javafx.beans.property.IntegerProperty;
-
+/**
+ * Represents a music track with metadata and file info
+ */
 public class Song {
     private int id;
     private String title;
     private String artist;
     private String category;
-    private int duration; // in seconds
+    private int duration; // Duration in seconds
     private String filePath;
 
-    // Properties for table binding
-    private StringProperty titleProperty;
-    private StringProperty artistProperty;
-    private StringProperty categoryProperty;
-    private StringProperty durationProperty;
+    // For creating new songs (no ID yet)
+    public Song(String title, String artist, String category, int duration, String filePath) {
+        this.title = title;
+        this.artist = artist;
+        this.category = category;
+        this.duration = duration;
+        this.filePath = filePath;
+    }
 
+    // For songs loaded from database (with ID)
     public Song(int id, String title, String artist, String category, int duration, String filePath) {
         this.id = id;
         this.title = title;
@@ -26,11 +28,10 @@ public class Song {
         this.category = category;
         this.duration = duration;
         this.filePath = filePath;
+    }
 
-        this.titleProperty = new SimpleStringProperty(title);
-        this.artistProperty = new SimpleStringProperty(artist);
-        this.categoryProperty = new SimpleStringProperty(category);
-        this.durationProperty = new SimpleStringProperty(formatDuration());
+    // Default constructor
+    public Song() {
     }
 
     // Getters and setters
@@ -38,46 +39,58 @@ public class Song {
     public void setId(int id) { this.id = id; }
 
     public String getTitle() { return title; }
-    public void setTitle(String title) {
-        this.title = title;
-        this.titleProperty.set(title);
-    }
+    public void setTitle(String title) { this.title = title; }
 
     public String getArtist() { return artist; }
-    public void setArtist(String artist) {
-        this.artist = artist;
-        this.artistProperty.set(artist);
-    }
+    public void setArtist(String artist) { this.artist = artist; }
 
     public String getCategory() { return category; }
-    public void setCategory(String category) {
-        this.category = category;
-        this.categoryProperty.set(category);
-    }
+    public void setCategory(String category) { this.category = category; }
 
     public int getDuration() { return duration; }
-    public void setDuration(int duration) {
-        this.duration = duration;
-        this.durationProperty.set(formatDuration());
-    }
+    public void setDuration(int duration) { this.duration = duration; }
 
     public String getFilePath() { return filePath; }
     public void setFilePath(String filePath) { this.filePath = filePath; }
 
-    // Property getters for table binding
-    public StringProperty titleProperty() { return titleProperty; }
-    public StringProperty artistProperty() { return artistProperty; }
-    public StringProperty categoryProperty() { return categoryProperty; }
-    public StringProperty durationProperty() { return durationProperty; }
-
-    @Override
-    public String toString() {
-        return title + " - " + artist + " (" + formatDuration() + ")";
-    }
-
-    private String formatDuration() {
+    // Convert seconds to MM:SS format
+    public String getFormattedDuration() {
         int minutes = duration / 60;
         int seconds = duration % 60;
         return String.format("%d:%02d", minutes, seconds);
+    }
+
+    // Convert seconds to HH:MM:SS format if needed
+    public String getFormattedDurationWithHours() {
+        int hours = duration / 3600;
+        int minutes = (duration % 3600) / 60;
+        int seconds = duration % 60;
+
+        if (hours > 0) {
+            return String.format("%d:%02d:%02d", hours, minutes, seconds);
+        } else {
+            return String.format("%d:%02d", minutes, seconds);
+        }
+    }
+
+    // Display as "Artist - Duration" in lists
+    @Override
+    public String toString() {
+        return artist + " - " + getFormattedDuration();
+    }
+
+    // Compare songs by ID
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Song song = (Song) o;
+        return id == song.id;
+    }
+
+    // Hash by ID for collections
+    @Override
+    public int hashCode() {
+        return id;
     }
 }

@@ -3,7 +3,6 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.text.Font?>
 <?import javafx.scene.control.cell.PropertyValueFactory?>
 
 <BorderPane xmlns="http://javafx.com/javafx/17.0.2-ea"
@@ -21,17 +20,16 @@
                 <Label fx:id="nowPlayingLabel" text="(none)" style="-fx-font-style: italic;"/>
             </HBox>
 
-            <!-- Media Controls -->
+            <!-- Media Controls - Simple time slider -->
             <HBox spacing="10" alignment="CENTER">
                 <Button fx:id="playButton" text="▶ Play" onAction="#playMusic"/>
                 <Button fx:id="pauseButton" text="⏸ Pause" onAction="#pauseMusic"/>
                 <Button fx:id="stopButton" text="⏹ Stop" onAction="#stopMusic"/>
                 <Label text="Volume"/>
                 <Slider fx:id="volumeSlider" prefWidth="100" min="0" max="100" value="50"/>
-                <Label fx:id="currentTimeLabel" text="00:00"/>
-                <Label text="/"/>
-                <Label fx:id="totalTimeLabel" text="00:00"/>
-                <ProgressBar fx:id="progressBar" prefWidth="200"/>
+                <Label fx:id="elapsedTimeLabel" text="0:00" style="-fx-text-fill: #666; -fx-font-size: 12;"/>
+                <Slider fx:id="progressSlider" prefWidth="200" min="0" max="100" value="0"/>
+                <Label fx:id="totalTimeLabel" text="0:00" style="-fx-text-fill: #666; -fx-font-size: 12;"/>
             </HBox>
         </VBox>
     </top>
@@ -90,6 +88,7 @@
                 <HBox spacing="10">
                     <TextField fx:id="filterField" promptText="Filter songs..." prefWidth="200"/>
                     <Button fx:id="filterButton" text="Filter" onAction="#applyFilter" prefWidth="70"/>
+                    <Button fx:id="clearFilterButton" text="Clear" onAction="#clearFilter" prefWidth="70"/>
                 </HBox>
 
                 <TableView fx:id="songsTableView" prefHeight="300">

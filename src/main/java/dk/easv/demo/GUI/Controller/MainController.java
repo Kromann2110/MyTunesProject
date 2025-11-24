@@ -1,9 +1,14 @@
 package dk.easv.demo.GUI.Controller;
 
+// Business entities
 import dk.easv.demo.BE.Playlist;
 import dk.easv.demo.BE.Song;
+
+// Business logic
 import dk.easv.demo.BLL.SongManager;
 import dk.easv.demo.BLL.PlaylistManager;
+
+// Java standard
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
@@ -19,12 +24,13 @@ import javafx.scene.media.MediaPlayer;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-
 import java.io.File;
 import java.net.URL;
 import java.util.List;
 import java.util.ResourceBundle;
-
+/**
+ * Main application controller - handles UI interactions and media playback
+ */
 public class MainController implements Initializable {
 
     @FXML private TableView<Song> songsTableView;
@@ -32,10 +38,13 @@ public class MainController implements Initializable {
     @FXML private ListView<Song> playlistSongsListView;
     @FXML private TextField filterField;
     @FXML private Button filterButton;
-    @FXML private Label nowPlayingLabel, currentTimeLabel, totalTimeLabel;
+    @FXML private Button clearFilterButton;
+    @FXML private Label nowPlayingLabel;
     @FXML private Button playButton, pauseButton, stopButton;
     @FXML private Slider volumeSlider;
-    @FXML private ProgressBar progressBar;
+    @FXML private Slider progressSlider;
+    @FXML private Label elapsedTimeLabel;
+    @FXML private Label totalTimeLabel;
 
     private ObservableList<Song> allSongs;
     private ObservableList<Playlist> allPlaylists;
@@ -46,7 +55,9 @@ public class MainController implements Initializable {
     private SongManager songManager;
     private PlaylistManager playlistManager;
     private Playlist selectedPlaylist;
+    private boolean isSeeking = false;
 
+    // Initialize controller and load data
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         try {
@@ -62,8 +73,10 @@ public class MainController implements Initializable {
             setupEventHandlers();
             loadDataFromDatabase();
 
-            // Set initial button states
             pauseButton.setDisable(true);
+            elapsedTimeLabel.setText("0:00");
+            totalTimeLabel.setText("0:00");
+            progressSlider.setValue(0);
 
         } catch (Exception e) {
             showErrorDialog("Error initializing application: " + e.getMessage());
@@ -71,6 +84,7 @@ public class MainController implements Initializable {
         }
     }
 
+    // Setup volume and progress controls
     private void setupMediaPlayer() {
         volumeSlider.setValue(50);
         volumeSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
@@ -78,31 +92,36 @@ public class MainController implements Initializable {
                 mediaPlayer.setVolume(newValue.doubleValue() / 100.0);
             }
         });
+
+        progressSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+            if (isSeeking && mediaPlayer != null) {
+                double seekTime = newValue.doubleValue() / 100.0 * mediaPlayer.getTotalDuration().toSeconds();
+                mediaPlayer.seek(Duration.seconds(seekTime));
+            }
+        });
     }
 
+    // Setup table views with sorting and filtering
     private void setupTableViews() {
-        // Setup songs table with filtering
         filteredSongs = new FilteredList<>(allSongs, p -> true);
         SortedList<Song> sortedSongs = new SortedList<>(filteredSongs);
         sortedSongs.comparatorProperty().bind(songsTableView.comparatorProperty());
         songsTableView.setItems(sortedSongs);
 
-        // Setup playlists table
         playlistsTableView.setItems(allPlaylists);
-
-        // Setup playlist songs list
         playlistSongsListView.setItems(currentPlaylistSongs);
     }
 
+    // Setup event handlers for user interactions
     private void setupEventHandlers() {
-        // Playlist selection handler
+        // Load songs when playlist selected
         playlistsTableView.getSelectionModel().selectedItemProperty().addListener(
                 (observable, oldValue, newValue) -> {
                     selectedPlaylist = newValue;
                     loadPlaylistSongs(newValue);
                 });
 
-        // Double click to play song from all songs
+        // Double click to play song from songs table
         songsTableView.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
                 playSelectedSong(songsTableView.getSelectionModel().getSelectedItem());
@@ -115,19 +134,40 @@ public class MainController implements Initializable {
                 playSelectedSong(playlistSongsListView.getSelectionModel().getSelectedItem());
             }
         });
+
+        // Enable seeking when slider pressed
+        progressSlider.setOnMousePressed(event -> {
+            if (mediaPlayer != null) {
+                isSeeking = true;
+            }
+        });
+
+        // Disable seeking when slider released
+        progressSlider.setOnMouseReleased(event -> {
+            if (mediaPlayer != null) {
+                isSeeking = false;
+            }
+        });
     }
 
+    // Load songs and playlists from database
     private void loadDataFromDatabase() {
         try {
-            // Load songs from database
             List<Song> songs = songManager.getAllSongs();
             allSongs.setAll(songs);
 
-            // Load playlists from database
             List<Playlist> playlists = playlistManager.getAllPlaylists();
-            allPlaylists.setAll(playlists);
 
-            System.out.println("Loaded " + songs.size() + " songs and " + playlists.size() + " playlists from database");
+            // Calculate duration and count for each playlist
+            for (Playlist playlist : playlists) {
+                String totalDuration = calculatePlaylistTotalDuration(playlist);
+                playlist.setTotalDuration(totalDuration);
+
+                List<Song> playlistSongs = playlistManager.getSongsInPlaylist(playlist);
+                playlist.setSongCount(playlistSongs.size());
+            }
+
+            allPlaylists.setAll(playlists);
 
         } catch (Exception e) {
             showErrorDialog("Error loading data from database: " + e.getMessage());
@@ -135,6 +175,44 @@ public class MainController implements Initializable {
         }
     }
 
+    // Calculate total duration of playlist
+    private String calculatePlaylistTotalDuration(Playlist playlist) {
+        try {
+            List<Song> songs = playlistManager.getSongsInPlaylist(playlist);
+            if (songs == null || songs.isEmpty()) {
+                return "00:00";
+            }
+
+            int totalSeconds = 0;
+            for (Song song : songs) {
+                totalSeconds += song.getDuration();
+            }
+
+            return formatSecondsToDuration(totalSeconds);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "00:00";
+        }
+    }
+
+    // Format seconds to readable time
+    private String formatSecondsToDuration(int totalSeconds) {
+        if (totalSeconds <= 0) {
+            return "00:00";
+        }
+
+        int hours = totalSeconds / 3600;
+        int minutes = (totalSeconds % 3600) / 60;
+        int seconds = totalSeconds % 60;
+
+        if (hours > 0) {
+            return String.format("%d:%02d:%02d", hours, minutes, seconds);
+        } else {
+            return String.format("%d:%02d", minutes, seconds);
+        }
+    }
+
+    // Load songs for selected playlist
     private void loadPlaylistSongs(Playlist playlist) {
         if (playlist == null) {
             currentPlaylistSongs.clear();
@@ -150,42 +228,44 @@ public class MainController implements Initializable {
         }
     }
 
+    // Refresh playlist display with updated info
+    private void refreshPlaylistDisplay() {
+        if (selectedPlaylist != null) {
+            String totalDuration = calculatePlaylistTotalDuration(selectedPlaylist);
+            selectedPlaylist.setTotalDuration(totalDuration);
+
+            List<Song> playlistSongs = playlistManager.getSongsInPlaylist(selectedPlaylist);
+            selectedPlaylist.setSongCount(playlistSongs.size());
+
+            playlistsTableView.refresh();
+        }
+    }
+
+    // Play selected song
     private void playSelectedSong(Song song) {
         if (song != null) {
             playSong(song);
         }
     }
 
-    /**
-     * Smart file finder - tries multiple locations to find music files
-     */
+    // Find music file in various locations
     private String findMusicFile(Song song) {
         String originalPath = song.getFilePath();
         System.out.println("Looking for file: " + originalPath);
 
-        // Extract just the filename from the path
         String fileName = new File(originalPath).getName();
         System.out.println("Filename: " + fileName);
 
-        // Try different possible locations
+        // Search in common locations
         String[] possibleLocations = {
-                // 1. Original absolute path (for your computer)
                 originalPath,
-
-                // 2. Relative path from application directory
                 "music/" + fileName,
                 "../music/" + fileName,
                 "./music/" + fileName,
-
-                // 3. In user's home directory
                 System.getProperty("user.home") + "/MyTunesMusic/" + fileName,
                 System.getProperty("user.home") + "/Music/" + fileName,
-
-                // 4. In current working directory
                 System.getProperty("user.dir") + "/music/" + fileName,
                 System.getProperty("user.dir") + "/MyTunesMusic/" + fileName,
-
-                // 5. Just the filename in current directory
                 fileName
         };
 
@@ -198,14 +278,14 @@ public class MainController implements Initializable {
             }
         }
 
-        // If no file found, return null
         System.out.println("Could not find file: " + fileName);
         return null;
     }
 
+    // Play song with media player
     private void playSong(Song song) {
         try {
-            // Safely stop and dispose current media player
+            // Stop previous playback
             if (mediaPlayer != null) {
                 try {
                     mediaPlayer.stop();
@@ -216,7 +296,6 @@ public class MainController implements Initializable {
                 mediaPlayer = null;
             }
 
-            // Find the music file using smart location detection
             String mediaUri = findMusicFile(song);
 
             if (mediaUri == null) {
@@ -233,10 +312,9 @@ public class MainController implements Initializable {
             Media media = new Media(mediaUri);
             mediaPlayer = new MediaPlayer(media);
 
-            // Set volume
             mediaPlayer.setVolume(volumeSlider.getValue() / 100.0);
 
-            // Set up event handlers
+            // Setup media player events
             mediaPlayer.setOnReady(() -> {
                 nowPlayingLabel.setText("Now Playing: " + song.getTitle() + " - " + song.getArtist());
                 setupProgressTracking();
@@ -260,43 +338,63 @@ public class MainController implements Initializable {
         }
     }
 
+    // Setup progress tracking for current song
     private void setupProgressTracking() {
         if (mediaPlayer == null) return;
 
-        // Update progress bar
-        mediaPlayer.currentTimeProperty().addListener((observable, oldValue, newValue) -> {
+        progressSlider.setValue(0);
+        elapsedTimeLabel.setText("0:00");
+        isSeeking = false;
+
+        // Set total duration when media is ready
+        mediaPlayer.setOnReady(() -> {
             try {
                 Duration totalDuration = mediaPlayer.getTotalDuration();
-                if (totalDuration != null && totalDuration.greaterThan(Duration.ZERO)) {
-                    double progress = newValue.toSeconds() / totalDuration.toSeconds();
-                    progressBar.setProgress(progress);
-                    currentTimeLabel.setText(formatTime(newValue));
+                if (totalDuration != null && !totalDuration.isUnknown()) {
+                    totalTimeLabel.setText(formatTimeSimple(totalDuration));
+                } else {
+                    totalTimeLabel.setText("0:00");
+                }
+            } catch (Exception e) {
+                System.out.println("Error setting total duration: " + e.getMessage());
+                totalTimeLabel.setText("0:00");
+            }
+        });
+
+        // Update progress as song plays
+        mediaPlayer.currentTimeProperty().addListener((observable, oldValue, newValue) -> {
+            try {
+                if (!isSeeking && mediaPlayer != null) {
+                    Duration totalDuration = mediaPlayer.getTotalDuration();
+                    if (totalDuration != null && totalDuration.greaterThan(Duration.ZERO) && !totalDuration.isUnknown()) {
+                        double progress = newValue.toSeconds() / totalDuration.toSeconds();
+                        progressSlider.setValue(progress * 100);
+                        elapsedTimeLabel.setText(formatTimeSimple(newValue));
+                        totalTimeLabel.setText(formatTimeSimple(totalDuration));
+                    } else {
+                        elapsedTimeLabel.setText(formatTimeSimple(newValue));
+                    }
                 }
             } catch (Exception e) {
                 System.out.println("Error updating progress: " + e.getMessage());
             }
         });
-
-        // Set total duration
-        mediaPlayer.setOnReady(() -> {
-            try {
-                Duration totalDuration = mediaPlayer.getTotalDuration();
-                if (totalDuration != null) {
-                    totalTimeLabel.setText(formatTime(totalDuration));
-                }
-            } catch (Exception e) {
-                System.out.println("Error setting total duration: " + e.getMessage());
-            }
-        });
     }
 
-    private String formatTime(Duration duration) {
-        int minutes = (int) duration.toMinutes();
-        int seconds = (int) duration.toSeconds() % 60;
-        return String.format("%02d:%02d", minutes, seconds);
+    // Format time for display
+    private String formatTimeSimple(Duration duration) {
+        if (duration == null || duration.isUnknown()) {
+            return "0:00";
+        }
+
+        int totalSeconds = (int) Math.floor(duration.toSeconds());
+        int minutes = totalSeconds / 60;
+        int seconds = totalSeconds % 60;
+
+        return String.format("%d:%02d", minutes, seconds);
     }
 
-    // Media control methods
+    // Play button handler
     @FXML
     private void playMusic() {
         if (mediaPlayer != null) {
@@ -312,6 +410,7 @@ public class MainController implements Initializable {
         }
     }
 
+    // Pause button handler
     @FXML
     private void pauseMusic() {
         if (mediaPlayer != null) {
@@ -325,6 +424,7 @@ public class MainController implements Initializable {
         }
     }
 
+    // Stop button handler
     @FXML
     private void stopMusic() {
         if (mediaPlayer != null) {
@@ -332,38 +432,42 @@ public class MainController implements Initializable {
                 mediaPlayer.stop();
                 playButton.setDisable(false);
                 pauseButton.setDisable(true);
-                progressBar.setProgress(0);
-                currentTimeLabel.setText("00:00");
+                progressSlider.setValue(0);
+                elapsedTimeLabel.setText("0:00");
+                isSeeking = false;
             } catch (Exception e) {
                 showErrorDialog("Error stopping music: " + e.getMessage());
             }
         }
     }
 
-    // Filter method
+    // Apply text filter to songs
     @FXML
     private void applyFilter() {
         String filterText = filterField.getText().trim();
         if (filterText.isEmpty()) {
             filteredSongs.setPredicate(song -> true);
-            filterButton.setText("Filter");
         } else {
             filteredSongs.setPredicate(song ->
                     song.getTitle().toLowerCase().contains(filterText.toLowerCase()) ||
                             song.getArtist().toLowerCase().contains(filterText.toLowerCase())
             );
-            filterButton.setText("Clear");
         }
     }
 
-    // Playlist methods
+    // Clear search filter
+    @FXML
+    private void clearFilter() {
+        filterField.setText("");
+        applyFilter();
+    }
+
+    // Open new playlist dialog
     @FXML
     private void createNewPlaylist() {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/dk/easv/demo/GUI/PlaylistEditor.fxml"));
             Parent root = loader.load();
-
-            PlaylistEditorController controller = loader.getController();
 
             Stage stage = new Stage();
             stage.setTitle("New Playlist");
@@ -371,7 +475,6 @@ public class MainController implements Initializable {
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.showAndWait();
 
-            // Refresh playlists after dialog closes
             loadDataFromDatabase();
 
         } catch (Exception e) {
@@ -380,6 +483,7 @@ public class MainController implements Initializable {
         }
     }
 
+    // Open edit playlist dialog
     @FXML
     private void editPlaylist() {
         Playlist selected = playlistsTableView.getSelectionModel().getSelectedItem();
@@ -401,7 +505,6 @@ public class MainController implements Initializable {
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.showAndWait();
 
-            // Refresh playlists after dialog closes
             loadDataFromDatabase();
 
         } catch (Exception e) {
@@ -410,6 +513,7 @@ public class MainController implements Initializable {
         }
     }
 
+    // Delete selected playlist
     @FXML
     private void deletePlaylist() {
         Playlist selected = playlistsTableView.getSelectionModel().getSelectedItem();
@@ -430,7 +534,6 @@ public class MainController implements Initializable {
                     allPlaylists.remove(selected);
                     showInfoDialog("Success", "Playlist '" + selected.getName() + "' deleted successfully");
 
-                    // Clear the playlist songs if this was the selected playlist
                     if (selectedPlaylist != null && selectedPlaylist.getId() == selected.getId()) {
                         selectedPlaylist = null;
                         currentPlaylistSongs.clear();
@@ -442,7 +545,7 @@ public class MainController implements Initializable {
         });
     }
 
-    // Song methods
+    // Open new song dialog
     @FXML
     private void createNewSong() {
         try {
@@ -455,7 +558,6 @@ public class MainController implements Initializable {
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.showAndWait();
 
-            // Refresh songs after dialog closes
             loadDataFromDatabase();
 
         } catch (Exception e) {
@@ -464,6 +566,7 @@ public class MainController implements Initializable {
         }
     }
 
+    // Open edit song dialog
     @FXML
     private void editSong() {
         Song selected = songsTableView.getSelectionModel().getSelectedItem();
@@ -485,7 +588,6 @@ public class MainController implements Initializable {
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.showAndWait();
 
-            // Refresh songs after dialog closes
             loadDataFromDatabase();
 
         } catch (Exception e) {
@@ -494,6 +596,7 @@ public class MainController implements Initializable {
         }
     }
 
+    // Delete selected song
     @FXML
     private void deleteSong() {
         Song selected = songsTableView.getSelectionModel().getSelectedItem();
@@ -520,7 +623,7 @@ public class MainController implements Initializable {
         });
     }
 
-    // Playlist song management methods
+    // Add selected song to selected playlist
     @FXML
     private void addSongToPlaylist() {
         Song selectedSong = songsTableView.getSelectionModel().getSelectedItem();
@@ -533,13 +636,15 @@ public class MainController implements Initializable {
 
         try {
             playlistManager.addSongToPlaylist(selectedPlaylist, selectedSong);
-            loadPlaylistSongs(selectedPlaylist); // Refresh the playlist songs
+            loadPlaylistSongs(selectedPlaylist);
+            refreshPlaylistDisplay();
             showInfoDialog("Success", "Added '" + selectedSong.getTitle() + "' to '" + selectedPlaylist.getName() + "'");
         } catch (Exception e) {
             showErrorDialog("Error adding song to playlist: " + e.getMessage());
         }
     }
 
+    // Move song up in playlist
     @FXML
     private void moveSongUp() {
         Song selectedSong = playlistSongsListView.getSelectionModel().getSelectedItem();
@@ -547,9 +652,22 @@ public class MainController implements Initializable {
             showErrorDialog("Please select a song from the playlist to move");
             return;
         }
-        showInfoDialog("Move Up", "Move up functionality would be implemented here");
+
+        try {
+            playlistManager.moveSongUp(selectedPlaylist, selectedSong);
+
+            // Refresh display and keep selection
+            loadPlaylistSongs(selectedPlaylist);
+            int newIndex = Math.max(0, playlistSongsListView.getSelectionModel().getSelectedIndex() - 1);
+            playlistSongsListView.getSelectionModel().select(newIndex);
+
+        } catch (Exception e) {
+            showErrorDialog("Error moving song up: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
+    // Move song down in playlist
     @FXML
     private void moveSongDown() {
         Song selectedSong = playlistSongsListView.getSelectionModel().getSelectedItem();
@@ -557,9 +675,23 @@ public class MainController implements Initializable {
             showErrorDialog("Please select a song from the playlist to move");
             return;
         }
-        showInfoDialog("Move Down", "Move down functionality would be implemented here");
+
+        try {
+            playlistManager.moveSongDown(selectedPlaylist, selectedSong);
+
+            // Refresh display and keep selection
+            loadPlaylistSongs(selectedPlaylist);
+            int newIndex = Math.min(playlistSongsListView.getItems().size() - 1,
+                    playlistSongsListView.getSelectionModel().getSelectedIndex() + 1);
+            playlistSongsListView.getSelectionModel().select(newIndex);
+
+        } catch (Exception e) {
+            showErrorDialog("Error moving song down: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
+    // Remove song from playlist
     @FXML
     private void removeSongFromPlaylist() {
         Song selectedSong = playlistSongsListView.getSelectionModel().getSelectedItem();
@@ -571,12 +703,14 @@ public class MainController implements Initializable {
         try {
             playlistManager.removeSongFromPlaylist(selectedPlaylist, selectedSong);
             currentPlaylistSongs.remove(selectedSong);
+            refreshPlaylistDisplay();
             showInfoDialog("Success", "Removed '" + selectedSong.getTitle() + "' from playlist");
         } catch (Exception e) {
             showErrorDialog("Error removing song from playlist: " + e.getMessage());
         }
     }
 
+    // Close application
     @FXML
     private void closeApplication() {
         shutdown();
@@ -584,6 +718,7 @@ public class MainController implements Initializable {
         stage.close();
     }
 
+    // Show error dialog
     private void showErrorDialog(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Error");
@@ -592,6 +727,7 @@ public class MainController implements Initializable {
         alert.showAndWait();
     }
 
+    // Show info dialog
     private void showInfoDialog(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
@@ -600,6 +736,7 @@ public class MainController implements Initializable {
         alert.showAndWait();
     }
 
+    // Cleanup media player on shutdown
     public void shutdown() {
         if (mediaPlayer != null) {
             try {

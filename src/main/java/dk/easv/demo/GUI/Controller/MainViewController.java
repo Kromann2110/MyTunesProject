@@ -1,20 +1,27 @@
 package dk.easv.demo.GUI.Controller;
 
+// Business entities
 import dk.easv.demo.BE.Playlist;
 import dk.easv.demo.BE.Song;
+
+// Business logic
 import dk.easv.demo.BLL.SongManager;
 import dk.easv.demo.BLL.PlaylistManager;
+
+// Java standard
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.util.Duration;
-
 import java.net.URL;
 import java.util.List;
 import java.util.ResourceBundle;
-
+/**
+ * Alternative main view using ListView instead of TableView
+ * Simpler version for basic functionality
+ */
 public class MainViewController implements Initializable {
 
     @FXML private ListView<Song> songsListView;
@@ -27,10 +34,10 @@ public class MainViewController implements Initializable {
     private SongManager songManager;
     private PlaylistManager playlistManager;
 
+    // Initialize controller
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         try {
-            // Initialize managers
             songManager = new SongManager();
             playlistManager = new PlaylistManager();
 
@@ -44,6 +51,7 @@ public class MainViewController implements Initializable {
         }
     }
 
+    // Setup volume control
     private void setupMediaPlayer() {
         volumeSlider.setValue(50);
         volumeSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
@@ -53,6 +61,7 @@ public class MainViewController implements Initializable {
         });
     }
 
+    // Setup click handlers
     private void setupEventHandlers() {
         // Double click to play song
         songsListView.setOnMouseClicked(event -> {
@@ -69,13 +78,12 @@ public class MainViewController implements Initializable {
         });
     }
 
+    // Load data from database
     private void loadDataFromDatabase() {
         try {
-            // Load songs from database
             List<Song> songs = songManager.getAllSongs();
             songsListView.getItems().setAll(songs);
 
-            // Load playlists from database
             List<Playlist> playlists = playlistManager.getAllPlaylists();
             playlistsListView.getItems().setAll(playlists);
 
@@ -85,6 +93,7 @@ public class MainViewController implements Initializable {
         }
     }
 
+    // Play selected song
     private void playSelectedSong() {
         Song selectedSong = songsListView.getSelectionModel().getSelectedItem();
         if (selectedSong != null) {
@@ -92,6 +101,7 @@ public class MainViewController implements Initializable {
         }
     }
 
+    // Play song with basic file handling
     private void playSong(Song song) {
         try {
             // Stop current playback
@@ -100,14 +110,11 @@ public class MainViewController implements Initializable {
                 mediaPlayer.dispose();
             }
 
-            // Use the file path from the database
             String filePath = song.getFilePath();
-
-            // Create media from file path
             Media media = new Media("file:///" + filePath.replace("\\", "/"));
             mediaPlayer = new MediaPlayer(media);
 
-            // Set up event handlers
+            // Setup media events
             mediaPlayer.setOnReady(() -> {
                 nowPlayingLabel.setText("Now Playing: " + song.getTitle() + " - " + song.getArtist());
                 setupProgressTracking();
@@ -125,8 +132,9 @@ public class MainViewController implements Initializable {
         }
     }
 
+    // Setup progress tracking
     private void setupProgressTracking() {
-        // Update progress slider
+        // Update progress as song plays
         mediaPlayer.currentTimeProperty().addListener((observable, oldValue, newValue) -> {
             if (!progressSlider.isValueChanging()) {
                 progressSlider.setValue(newValue.toSeconds());
@@ -141,7 +149,7 @@ public class MainViewController implements Initializable {
             totalTimeLabel.setText(formatTime(totalDuration));
         });
 
-        // Allow seeking
+        // Allow seeking by clicking progress bar
         progressSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
             if (progressSlider.isValueChanging() && mediaPlayer != null) {
                 mediaPlayer.seek(Duration.seconds(newValue.doubleValue()));
@@ -149,12 +157,14 @@ public class MainViewController implements Initializable {
         });
     }
 
+    // Format time for display
     private String formatTime(Duration duration) {
         int minutes = (int) duration.toMinutes();
         int seconds = (int) duration.toSeconds() % 60;
         return String.format("%02d:%02d", minutes, seconds);
     }
 
+    // Play button handler
     @FXML
     private void playMusic() {
         if (mediaPlayer != null) {
@@ -164,6 +174,7 @@ public class MainViewController implements Initializable {
         }
     }
 
+    // Pause button handler
     @FXML
     private void pauseMusic() {
         if (mediaPlayer != null) {
@@ -173,6 +184,7 @@ public class MainViewController implements Initializable {
         }
     }
 
+    // Stop button handler
     @FXML
     private void stopMusic() {
         if (mediaPlayer != null) {
@@ -184,6 +196,7 @@ public class MainViewController implements Initializable {
         }
     }
 
+    // Create playlist with text input
     @FXML
     private void createNewPlaylist() {
         TextInputDialog dialog = new TextInputDialog();
@@ -204,6 +217,7 @@ public class MainViewController implements Initializable {
         });
     }
 
+    // Add song to playlist
     @FXML
     private void addSongToPlaylist() {
         Song selectedSong = songsListView.getSelectionModel().getSelectedItem();
@@ -222,6 +236,7 @@ public class MainViewController implements Initializable {
         }
     }
 
+    // Show playlist contents in dialog
     private void showPlaylistSongs() {
         Playlist selectedPlaylist = playlistsListView.getSelectionModel().getSelectedItem();
         if (selectedPlaylist != null) {
@@ -240,6 +255,7 @@ public class MainViewController implements Initializable {
         }
     }
 
+    // Show error dialog
     private void showErrorDialog(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Error");
@@ -248,6 +264,7 @@ public class MainViewController implements Initializable {
         alert.showAndWait();
     }
 
+    // Show info dialog
     private void showInfoDialog(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
@@ -256,6 +273,7 @@ public class MainViewController implements Initializable {
         alert.showAndWait();
     }
 
+    // Cleanup on shutdown
     public void shutdown() {
         if (mediaPlayer != null) {
             mediaPlayer.stop();

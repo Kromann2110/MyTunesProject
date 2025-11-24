@@ -1,23 +1,30 @@
 package dk.easv.demo.GUI.Model;
 
+// Business entities
 import dk.easv.demo.BE.Playlist;
 import dk.easv.demo.BE.Song;
 
+// Java standard
 import java.util.ArrayList;
 import java.util.List;
-
+/**
+ * Mock model for testing without database
+ * Provides hardcoded sample data
+ */
 public class MockMainModel {
     private List<Song> allSongs;
     private List<Playlist> allPlaylists;
 
+    // Create mock data
     public MockMainModel() {
         allSongs = new ArrayList<>();
         allPlaylists = new ArrayList<>();
         createMockData();
     }
 
+    // Create sample songs and playlists
     private void createMockData() {
-        // Create mock songs - duration must be int (seconds), not String
+        // Create mock songs
         allSongs.add(new Song(1, "Hello", "Adele", "Pop", 295, "C:\\MyTunesMusic\\Adele Hello.mp3"));
         allSongs.add(new Song(2, "Fly Away", "Michael Jackson", "Pop", 214, "C:\\MyTunesMusic\\Fly Away.mp3"));
         allSongs.add(new Song(3, "Hard Time", "Seinabo Sey", "Pop", 271, "C:\\MyTunesMusic\\Seinabo Sey Hard Time.mp3"));
@@ -31,19 +38,22 @@ public class MockMainModel {
         allPlaylists.add(new Playlist(4, "Favorites"));
     }
 
+    // Get all mock songs
     public List<Song> getAllSongs() {
         return new ArrayList<>(allSongs);
     }
 
+    // Get all mock playlists
     public List<Playlist> getAllPlaylists() {
         return new ArrayList<>(allPlaylists);
     }
 
+    // Mock add song to playlist
     public void addSongToPlaylist(Playlist playlist, Song song) {
-        // Mock implementation - in real app this would update the database
         System.out.println("Mock: Added '" + song.getTitle() + "' to playlist '" + playlist.getName() + "'");
     }
 
+    // Create mock playlist
     public Playlist createPlaylist(String name) {
         int newId = allPlaylists.size() + 1;
         Playlist newPlaylist = new Playlist(newId, name);
@@ -51,8 +61,8 @@ public class MockMainModel {
         return newPlaylist;
     }
 
+    // Get mock songs for playlist
     public List<Song> getSongsInPlaylist(Playlist playlist) {
-        // Return some mock songs for the playlist
         List<Song> playlistSongs = new ArrayList<>();
         if (playlist.getName().equals("Party")) {
             playlistSongs.add(allSongs.get(0)); // Hello

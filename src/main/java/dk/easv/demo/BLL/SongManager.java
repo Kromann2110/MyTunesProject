@@ -1,38 +1,71 @@
 package dk.easv.demo.BLL;
 
+// Business entities
 import dk.easv.demo.BE.Song;
-import dk.easv.demo.DAL.ISongDataAccess;
+
+// Data access
 import dk.easv.demo.DAL.db.SongDAO_DB;
 
+// Java standard
 import java.sql.SQLException;
 import java.util.List;
-
+/**
+ * Alternative song manager with runtime exceptions
+ */
 public class SongManager {
-    private ISongDataAccess songDAO;
+    private SongDAO_DB songDAO;
 
     public SongManager() {
         songDAO = new SongDAO_DB();
     }
 
-    public List<Song> getAllSongs() throws SQLException {
-        return songDAO.getAllSongs();
+    // Get all songs (throws runtime exception)
+    public List<Song> getAllSongs() {
+        try {
+            return songDAO.getAllSongs();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error loading songs from database", e);
+        }
     }
 
-    // This method should accept individual parameters
-    public Song createSong(String title, String artist, String category, int duration, String filePath) throws SQLException {
-        // The DAO handles creating the Song object
-        return songDAO.createSong(new Song(0, title, artist, category, duration, filePath));
+    // Create new song (throws runtime exception)
+    public Song createSong(String title, String artist, String category, int duration, String filePath) {
+        try {
+            return songDAO.createSong(title, artist, category, duration, filePath);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error creating song", e);
+        }
     }
 
-    public void updateSong(Song song) throws SQLException {
-        songDAO.updateSong(song);
+    // Update song (throws runtime exception)
+    public void updateSong(Song song) {
+        try {
+            songDAO.updateSong(song);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error updating song", e);
+        }
     }
 
-    public void deleteSong(Song song) throws SQLException {
-        songDAO.deleteSong(song);
+    // Delete song (throws runtime exception)
+    public void deleteSong(Song song) {
+        try {
+            songDAO.deleteSong(song);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error deleting song", e);
+        }
     }
 
-    public Song getSongById(int songId) throws SQLException {
-        return songDAO.getSongById(songId);
+    // Get song by ID (throws runtime exception)
+    public Song getSongById(int id) {
+        try {
+            return songDAO.getSongById(id);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error getting song by ID", e);
+        }
     }
 }

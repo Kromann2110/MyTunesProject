@@ -1,18 +1,24 @@
 package dk.easv.demo.GUI.Controller;
 
+// Business entities
 import dk.easv.demo.BE.Song;
+
+// Business logic
 import dk.easv.demo.BLL.SongManager;
+
+// Java standard
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.TextField;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-
 import java.io.File;
 import java.net.URL;
-import java.sql.SQLException;
 import java.util.ResourceBundle;
-
+/**
+ * Controller for creating/editing songs
+ */
 public class SongEditorController implements Initializable {
 
     @FXML private TextField titleField;
@@ -20,174 +26,152 @@ public class SongEditorController implements Initializable {
     @FXML private TextField genreField;
     @FXML private TextField durationField;
     @FXML private TextField filePathField;
-    @FXML private Button saveButton, cancelButton, browseButton;
 
     private SongManager songManager;
     private Song currentSong;
+    private boolean isEditMode = false;
 
+    // Initialize controller
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        songManager = new SongManager();
+        try {
+            songManager = new SongManager();
+        } catch (Exception e) {
+            showErrorDialog("Error initializing song editor: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
+    // Load song for editing
     public void setSong(Song song) {
         this.currentSong = song;
+        this.isEditMode = true;
+
         if (song != null) {
             titleField.setText(song.getTitle());
             artistField.setText(song.getArtist());
             genreField.setText(song.getCategory());
-            durationField.setText(String.valueOf(song.getDuration()));
+            durationField.setText(formatDurationForDisplay(song.getDuration()));
             filePathField.setText(song.getFilePath());
         }
     }
 
+    // Browse for music file
     @FXML
     private void browseFile() {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Select Music File");
         fileChooser.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("Audio Files", "*.mp3", "*.wav", "*.m4a", "*.aac"),
-                new FileChooser.ExtensionFilter("MP3 Files", "*.mp3"),
-                new FileChooser.ExtensionFilter("WAV Files", "*.wav"),
+                new FileChooser.ExtensionFilter("Audio Files", "*.mp3", "*.wav", "*.aac", "*.ogg"),
                 new FileChooser.ExtensionFilter("All Files", "*.*")
         );
 
-        // Set initial directory to music folder if it exists
-        File musicDir = new File("music");
-        if (musicDir.exists() && musicDir.isDirectory()) {
-            fileChooser.setInitialDirectory(musicDir);
-        } else {
-            File myTunesMusic = new File("MyTunesMusic");
-            if (myTunesMusic.exists() && myTunesMusic.isDirectory()) {
-                fileChooser.setInitialDirectory(myTunesMusic);
-            }
-        }
-
-        File selectedFile = fileChooser.showOpenDialog(browseButton.getScene().getWindow());
+        File selectedFile = fileChooser.showOpenDialog(filePathField.getScene().getWindow());
         if (selectedFile != null) {
-            // Store relative path if file is in music folder
-            String filePath = selectedFile.getAbsolutePath();
-
-            // Try to make path relative to music folder for portability
-            File musicFolder = new File("music");
-            if (selectedFile.getAbsolutePath().contains(musicFolder.getAbsolutePath())) {
-                // File is in or under music folder, use relative path
-                File currentDir = new File(System.getProperty("user.dir"));
-                String relativePath = currentDir.toURI().relativize(selectedFile.toURI()).getPath();
-                filePathField.setText(relativePath);
-            } else {
-                filePathField.setText(filePath);
-            }
-
-            // Auto-fill title from filename if empty
-            if (titleField.getText().isEmpty()) {
-                String fileName = selectedFile.getName();
-                // Remove file extension
-                int dotIndex = fileName.lastIndexOf('.');
-                if (dotIndex > 0) {
-                    fileName = fileName.substring(0, dotIndex);
-                }
-                titleField.setText(fileName);
-            }
+            filePathField.setText(selectedFile.getAbsolutePath());
         }
     }
 
+    // Save song changes
     @FXML
     private void saveSong() {
-        String title = titleField.getText().trim();
-        String artist = artistField.getText().trim();
-        String genre = genreField.getText().trim();
-        String durationText = durationField.getText().trim();
-        String filePath = filePathField.getText().trim();
-
-        // Validation
-        if (title.isEmpty() || artist.isEmpty() || durationText.isEmpty() || filePath.isEmpty()) {
-            showErrorDialog("Please fill in all required fields");
-            return;
-        }
-
-        // Parse duration from String to int
-        int duration;
         try {
-            duration = Integer.parseInt(durationText);
-            if (duration <= 0) {
-                showErrorDialog("Duration must be a positive number");
+            String title = titleField.getText().trim();
+            String artist = artistField.getText().trim();
+            String genre = genreField.getText().trim();
+            String durationText = durationField.getText().trim();
+            String filePath = filePathField.getText().trim();
+
+            if (title.isEmpty() || artist.isEmpty() || durationText.isEmpty() || filePath.isEmpty()) {
+                showErrorDialog("Please fill in all required fields");
                 return;
             }
-        } catch (NumberFormatException e) {
-            showErrorDialog("Duration must be a number (seconds)");
-            return;
-        }
 
-        // Check if file exists (try multiple locations)
-        if (!checkFileExists(filePath)) {
-            showErrorDialog("The selected file does not exist at: " + filePath +
-                    "\n\nPlease make sure the file is in one of these locations:\n" +
-                    "- 'music' folder next to the application\n" +
-                    "- Your home directory/MyTunesMusic/\n" +
-                    "- Same folder as the application");
-            return;
-        }
+            // Parse duration from text to seconds
+            int duration = parseDurationToSeconds(durationText);
+            if (duration <= 0) {
+                showErrorDialog("Please enter a valid duration in format MM:SS or HH:MM:SS");
+                return;
+            }
 
-        try {
-            if (currentSong == null) {
-                // FIXED: Use individual parameters instead of Song object
-                Song createdSong = songManager.createSong(title, artist, genre, duration, filePath);
-                showInfoDialog("Success", "Song '" + title + "' created successfully");
-            } else {
+            if (isEditMode && currentSong != null) {
                 // Update existing song
                 currentSong.setTitle(title);
                 currentSong.setArtist(artist);
                 currentSong.setCategory(genre);
                 currentSong.setDuration(duration);
                 currentSong.setFilePath(filePath);
+
                 songManager.updateSong(currentSong);
                 showInfoDialog("Success", "Song '" + title + "' updated successfully");
+            } else {
+                // Create new song
+                songManager.createSong(title, artist, genre, duration, filePath);
+                showInfoDialog("Success", "Song '" + title + "' created successfully");
             }
 
             closeWindow();
 
-        } catch (SQLException e) {
+        } catch (Exception e) {
             showErrorDialog("Error saving song: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
-    private boolean checkFileExists(String filePath) {
-        // Try different possible locations (same logic as MainController)
-        String fileName = new File(filePath).getName();
-
-        String[] possibleLocations = {
-                filePath,
-                "music/" + fileName,
-                "../music/" + fileName,
-                "./music/" + fileName,
-                System.getProperty("user.home") + "/MyTunesMusic/" + fileName,
-                System.getProperty("user.home") + "/Music/" + fileName,
-                System.getProperty("user.dir") + "/music/" + fileName,
-                System.getProperty("user.dir") + "/MyTunesMusic/" + fileName,
-                fileName
-        };
-
-        for (String location : possibleLocations) {
-            File file = new File(location);
-            if (file.exists() && file.isFile()) {
-                return true;
-            }
-        }
-        return false;
-    }
-
+    // Cancel editing
     @FXML
     private void cancel() {
         closeWindow();
     }
 
+    // Close editor window
     private void closeWindow() {
-        Stage stage = (Stage) cancelButton.getScene().getWindow();
+        Stage stage = (Stage) titleField.getScene().getWindow();
         stage.close();
     }
 
+    // Parse duration string to seconds
+    private int parseDurationToSeconds(String duration) {
+        if (duration == null || duration.isEmpty()) {
+            return 0;
+        }
+
+        try {
+            String[] parts = duration.split(":");
+            if (parts.length == 2) {
+                // MM:SS format
+                int minutes = Integer.parseInt(parts[0]);
+                int seconds = Integer.parseInt(parts[1]);
+                return minutes * 60 + seconds;
+            } else if (parts.length == 3) {
+                // HH:MM:SS format
+                int hours = Integer.parseInt(parts[0]);
+                int minutes = Integer.parseInt(parts[1]);
+                int seconds = Integer.parseInt(parts[2]);
+                return hours * 3600 + minutes * 60 + seconds;
+            } else if (parts.length == 1) {
+                // Just seconds
+                return Integer.parseInt(parts[0]);
+            }
+        } catch (NumberFormatException e) {
+            showErrorDialog("Invalid duration format. Please use MM:SS or HH:MM:SS");
+        }
+        return 0;
+    }
+
+    // Format seconds to display format
+    private String formatDurationForDisplay(int seconds) {
+        if (seconds <= 0) {
+            return "0:00";
+        }
+
+        int minutes = seconds / 60;
+        int remainingSeconds = seconds % 60;
+
+        return String.format("%d:%02d", minutes, remainingSeconds);
+    }
+
+    // Show error dialog
     private void showErrorDialog(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Error");
@@ -196,6 +180,7 @@ public class SongEditorController implements Initializable {
         alert.showAndWait();
     }
 
+    // Show info dialog
     private void showInfoDialog(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
