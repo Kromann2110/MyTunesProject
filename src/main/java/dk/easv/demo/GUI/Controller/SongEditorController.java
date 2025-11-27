@@ -4,7 +4,7 @@ package dk.easv.demo.GUI.Controller;
 import dk.easv.demo.BE.Song;
 
 // Business logic
-import dk.easv.demo.BLL.SongManager;
+import dk.easv.demo.BLL.MusicManager;
 
 // Java standard
 import javafx.fxml.FXML;
@@ -16,6 +16,7 @@ import javafx.stage.Stage;
 import java.io.File;
 import java.net.URL;
 import java.util.ResourceBundle;
+
 /**
  * Controller for creating/editing songs
  */
@@ -27,7 +28,7 @@ public class SongEditorController implements Initializable {
     @FXML private TextField durationField;
     @FXML private TextField filePathField;
 
-    private SongManager songManager;
+    private MusicManager musicManager;
     private Song currentSong;
     private boolean isEditMode = false;
 
@@ -35,7 +36,7 @@ public class SongEditorController implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         try {
-            songManager = new SongManager();
+            musicManager = new MusicManager();
         } catch (Exception e) {
             showErrorDialog("Error initializing song editor: " + e.getMessage());
             e.printStackTrace();
@@ -102,11 +103,11 @@ public class SongEditorController implements Initializable {
                 currentSong.setDuration(duration);
                 currentSong.setFilePath(filePath);
 
-                songManager.updateSong(currentSong);
+                musicManager.updateSong(currentSong);
                 showInfoDialog("Success", "Song '" + title + "' updated successfully");
             } else {
                 // Create new song
-                songManager.createSong(title, artist, genre, duration, filePath);
+                musicManager.createSong(title, artist, genre, duration, filePath);
                 showInfoDialog("Success", "Song '" + title + "' created successfully");
             }
 

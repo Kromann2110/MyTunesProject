@@ -5,14 +5,12 @@ import dk.easv.demo.BE.Playlist;
 import dk.easv.demo.BE.Song;
 
 // Business logic
-import dk.easv.demo.BLL.SongManager;
+import dk.easv.demo.BLL.MusicManager;
 import dk.easv.demo.BLL.PlaylistManager;
 
 // Java standard
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.collections.transformation.FilteredList;
-import javafx.collections.transformation.SortedList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -28,18 +26,25 @@ import java.io.File;
 import java.net.URL;
 import java.util.List;
 import java.util.ResourceBundle;
+
 /**
  * Main application controller - handles UI interactions and media playback
  */
 public class MainController implements Initializable {
 
-    @FXML private TableView<Song> songsTableView;
-    @FXML private TableView<Playlist> playlistsTableView;
-    @FXML private ListView<Song> playlistSongsListView;
-    @FXML private TextField filterField;
-    @FXML private Button filterButton;
-    @FXML private Button clearFilterButton;
+    // Header section
     @FXML private Label nowPlayingLabel;
+
+    // Playlists section
+    @FXML private TableView<Playlist> playlistsTableView;
+
+    // Songs on Playlist section
+    @FXML private ListView<Song> playlistSongsListView;
+
+    // All Songs section
+    @FXML private TableView<Song> songsTableView;
+
+    // Media Controls
     @FXML private Button playButton, pauseButton, stopButton;
     @FXML private Slider volumeSlider;
     @FXML private Slider progressSlider;
@@ -49,10 +54,9 @@ public class MainController implements Initializable {
     private ObservableList<Song> allSongs;
     private ObservableList<Playlist> allPlaylists;
     private ObservableList<Song> currentPlaylistSongs;
-    private FilteredList<Song> filteredSongs;
 
     private MediaPlayer mediaPlayer;
-    private SongManager songManager;
+    private MusicManager musicManager;
     private PlaylistManager playlistManager;
     private Playlist selectedPlaylist;
     private boolean isSeeking = false;
@@ -61,7 +65,7 @@ public class MainController implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         try {
-            songManager = new SongManager();
+            musicManager = new MusicManager();
             playlistManager = new PlaylistManager();
 
             allSongs = FXCollections.observableArrayList();
@@ -69,14 +73,15 @@ public class MainController implements Initializable {
             currentPlaylistSongs = FXCollections.observableArrayList();
 
             setupMediaPlayer();
-            setupTableViews();
             setupEventHandlers();
+            setupListView();
             loadDataFromDatabase();
 
             pauseButton.setDisable(true);
             elapsedTimeLabel.setText("0:00");
             totalTimeLabel.setText("0:00");
             progressSlider.setValue(0);
+            nowPlayingLabel.setText("(none) ... Is Playing");
 
         } catch (Exception e) {
             showErrorDialog("Error initializing application: " + e.getMessage());
@@ -101,15 +106,20 @@ public class MainController implements Initializable {
         });
     }
 
-    // Setup table views with sorting and filtering
-    private void setupTableViews() {
-        filteredSongs = new FilteredList<>(allSongs, p -> true);
-        SortedList<Song> sortedSongs = new SortedList<>(filteredSongs);
-        sortedSongs.comparatorProperty().bind(songsTableView.comparatorProperty());
-        songsTableView.setItems(sortedSongs);
-
-        playlistsTableView.setItems(allPlaylists);
-        playlistSongsListView.setItems(currentPlaylistSongs);
+    // Setup list view display
+    private void setupListView() {
+        playlistSongsListView.setCellFactory(lv -> new ListCell<Song>() {
+            @Override
+            protected void updateItem(Song song, boolean empty) {
+                super.updateItem(song, empty);
+                if (empty || song == null) {
+                    setText(null);
+                } else {
+                    // Display as "Artist - Formatted Duration"
+                    setText(song.getArtist() + " - " + song.getFormattedDurationFromSeconds());
+                }
+            }
+        });
     }
 
     // Setup event handlers for user interactions
@@ -153,8 +163,9 @@ public class MainController implements Initializable {
     // Load songs and playlists from database
     private void loadDataFromDatabase() {
         try {
-            List<Song> songs = songManager.getAllSongs();
+            List<Song> songs = musicManager.getAllSongs();
             allSongs.setAll(songs);
+            songsTableView.setItems(allSongs);
 
             List<Playlist> playlists = playlistManager.getAllPlaylists();
 
@@ -168,6 +179,7 @@ public class MainController implements Initializable {
             }
 
             allPlaylists.setAll(playlists);
+            playlistsTableView.setItems(allPlaylists);
 
         } catch (Exception e) {
             showErrorDialog("Error loading data from database: " + e.getMessage());
@@ -222,22 +234,10 @@ public class MainController implements Initializable {
         try {
             List<Song> songs = playlistManager.getSongsInPlaylist(playlist);
             currentPlaylistSongs.setAll(songs);
+            playlistSongsListView.setItems(currentPlaylistSongs);
         } catch (Exception e) {
             showErrorDialog("Error loading playlist songs: " + e.getMessage());
             e.printStackTrace();
-        }
-    }
-
-    // Refresh playlist display with updated info
-    private void refreshPlaylistDisplay() {
-        if (selectedPlaylist != null) {
-            String totalDuration = calculatePlaylistTotalDuration(selectedPlaylist);
-            selectedPlaylist.setTotalDuration(totalDuration);
-
-            List<Song> playlistSongs = playlistManager.getSongsInPlaylist(selectedPlaylist);
-            selectedPlaylist.setSongCount(playlistSongs.size());
-
-            playlistsTableView.refresh();
         }
     }
 
@@ -316,7 +316,7 @@ public class MainController implements Initializable {
 
             // Setup media player events
             mediaPlayer.setOnReady(() -> {
-                nowPlayingLabel.setText("Now Playing: " + song.getTitle() + " - " + song.getArtist());
+                nowPlayingLabel.setText(song.getTitle() + " - " + song.getArtist() + " ... Is Playing");
                 setupProgressTracking();
                 playMusic();
             });
@@ -435,31 +435,11 @@ public class MainController implements Initializable {
                 progressSlider.setValue(0);
                 elapsedTimeLabel.setText("0:00");
                 isSeeking = false;
+                nowPlayingLabel.setText("(none) ... Is Playing");
             } catch (Exception e) {
                 showErrorDialog("Error stopping music: " + e.getMessage());
             }
         }
-    }
-
-    // Apply text filter to songs
-    @FXML
-    private void applyFilter() {
-        String filterText = filterField.getText().trim();
-        if (filterText.isEmpty()) {
-            filteredSongs.setPredicate(song -> true);
-        } else {
-            filteredSongs.setPredicate(song ->
-                    song.getTitle().toLowerCase().contains(filterText.toLowerCase()) ||
-                            song.getArtist().toLowerCase().contains(filterText.toLowerCase())
-            );
-        }
-    }
-
-    // Clear search filter
-    @FXML
-    private void clearFilter() {
-        filterField.setText("");
-        applyFilter();
     }
 
     // Open new playlist dialog
@@ -613,7 +593,7 @@ public class MainController implements Initializable {
         confirmation.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
                 try {
-                    songManager.deleteSong(selected);
+                    musicManager.deleteSong(selected);
                     allSongs.remove(selected);
                     showInfoDialog("Success", "Song '" + selected.getTitle() + "' deleted successfully");
                 } catch (Exception e) {
@@ -707,6 +687,19 @@ public class MainController implements Initializable {
             showInfoDialog("Success", "Removed '" + selectedSong.getTitle() + "' from playlist");
         } catch (Exception e) {
             showErrorDialog("Error removing song from playlist: " + e.getMessage());
+        }
+    }
+
+    // Refresh playlist display with updated info
+    private void refreshPlaylistDisplay() {
+        if (selectedPlaylist != null) {
+            String totalDuration = calculatePlaylistTotalDuration(selectedPlaylist);
+            selectedPlaylist.setTotalDuration(totalDuration);
+
+            List<Song> playlistSongs = playlistManager.getSongsInPlaylist(selectedPlaylist);
+            selectedPlaylist.setSongCount(playlistSongs.size());
+
+            playlistsTableView.refresh();
         }
     }
 

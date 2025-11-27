@@ -5,7 +5,7 @@ import dk.easv.demo.BE.Playlist;
 import dk.easv.demo.BE.Song;
 
 // Business logic
-import dk.easv.demo.BLL.SongManager;
+import dk.easv.demo.BLL.MusicManager;
 import dk.easv.demo.BLL.PlaylistManager;
 
 // Java standard
@@ -16,8 +16,10 @@ import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.util.Duration;
 import java.net.URL;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.ResourceBundle;
+
 /**
  * Alternative main view using ListView instead of TableView
  * Simpler version for basic functionality
@@ -31,14 +33,14 @@ public class MainViewController implements Initializable {
     @FXML private Label currentTimeLabel, totalTimeLabel, nowPlayingLabel;
 
     private MediaPlayer mediaPlayer;
-    private SongManager songManager;
+    private MusicManager musicManager;
     private PlaylistManager playlistManager;
 
     // Initialize controller
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         try {
-            songManager = new SongManager();
+            musicManager = new MusicManager();
             playlistManager = new PlaylistManager();
 
             setupMediaPlayer();
@@ -69,35 +71,34 @@ public class MainViewController implements Initializable {
                 playSelectedSong();
             }
         });
-
-        // Click to show playlist songs
-        playlistsListView.setOnMouseClicked(event -> {
-            if (event.getClickCount() == 1) {
-                showPlaylistSongs();
-            }
-        });
     }
 
     // Load data from database
     private void loadDataFromDatabase() {
         try {
-            List<Song> songs = songManager.getAllSongs();
+            List<Song> songs = musicManager.getAllSongs();
             songsListView.getItems().setAll(songs);
 
             List<Playlist> playlists = playlistManager.getAllPlaylists();
             playlistsListView.getItems().setAll(playlists);
 
+        } catch (SQLException e) {
+            showErrorDialog("Database error loading songs: " + e.getMessage());
+            e.printStackTrace();
         } catch (Exception e) {
             showErrorDialog("Error loading data from database: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
-    // Play selected song
+    // Play selected song - FIXED: Added @FXML annotation
+    @FXML
     private void playSelectedSong() {
         Song selectedSong = songsListView.getSelectionModel().getSelectedItem();
         if (selectedSong != null) {
             playSong(selectedSong);
+        } else {
+            showErrorDialog("Please select a song to play");
         }
     }
 
@@ -159,8 +160,13 @@ public class MainViewController implements Initializable {
 
     // Format time for display
     private String formatTime(Duration duration) {
-        int minutes = (int) duration.toMinutes();
-        int seconds = (int) duration.toSeconds() % 60;
+        if (duration == null || duration.isUnknown()) {
+            return "00:00";
+        }
+
+        int totalSeconds = (int) Math.floor(duration.toSeconds());
+        int minutes = totalSeconds / 60;
+        int seconds = totalSeconds % 60;
         return String.format("%02d:%02d", minutes, seconds);
     }
 
@@ -168,9 +174,15 @@ public class MainViewController implements Initializable {
     @FXML
     private void playMusic() {
         if (mediaPlayer != null) {
-            mediaPlayer.play();
-            playButton.setDisable(true);
-            pauseButton.setDisable(false);
+            try {
+                mediaPlayer.play();
+                playButton.setDisable(true);
+                pauseButton.setDisable(false);
+            } catch (Exception e) {
+                showErrorDialog("Error playing music: " + e.getMessage());
+            }
+        } else {
+            showErrorDialog("No song selected to play");
         }
     }
 
@@ -178,9 +190,13 @@ public class MainViewController implements Initializable {
     @FXML
     private void pauseMusic() {
         if (mediaPlayer != null) {
-            mediaPlayer.pause();
-            playButton.setDisable(false);
-            pauseButton.setDisable(true);
+            try {
+                mediaPlayer.pause();
+                playButton.setDisable(false);
+                pauseButton.setDisable(true);
+            } catch (Exception e) {
+                showErrorDialog("Error pausing music: " + e.getMessage());
+            }
         }
     }
 
@@ -188,11 +204,15 @@ public class MainViewController implements Initializable {
     @FXML
     private void stopMusic() {
         if (mediaPlayer != null) {
-            mediaPlayer.stop();
-            playButton.setDisable(false);
-            pauseButton.setDisable(true);
-            progressSlider.setValue(0);
-            currentTimeLabel.setText("00:00");
+            try {
+                mediaPlayer.stop();
+                playButton.setDisable(false);
+                pauseButton.setDisable(true);
+                progressSlider.setValue(0);
+                currentTimeLabel.setText("00:00");
+            } catch (Exception e) {
+                showErrorDialog("Error stopping music: " + e.getMessage());
+            }
         }
     }
 
@@ -236,7 +256,8 @@ public class MainViewController implements Initializable {
         }
     }
 
-    // Show playlist contents in dialog
+    // Show playlist contents in dialog - FIXED: Added @FXML annotation
+    @FXML
     private void showPlaylistSongs() {
         Playlist selectedPlaylist = playlistsListView.getSelectionModel().getSelectedItem();
         if (selectedPlaylist != null) {
@@ -252,6 +273,8 @@ public class MainViewController implements Initializable {
             } catch (Exception e) {
                 showErrorDialog("Error loading playlist songs: " + e.getMessage());
             }
+        } else {
+            showErrorDialog("Please select a playlist first");
         }
     }
 
@@ -276,8 +299,12 @@ public class MainViewController implements Initializable {
     // Cleanup on shutdown
     public void shutdown() {
         if (mediaPlayer != null) {
-            mediaPlayer.stop();
-            mediaPlayer.dispose();
+            try {
+                mediaPlayer.stop();
+                mediaPlayer.dispose();
+            } catch (Exception e) {
+                System.out.println("Error stopping media player on shutdown: " + e.getMessage());
+            }
         }
     }
 }

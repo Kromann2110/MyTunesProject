@@ -6,7 +6,7 @@ import dk.easv.demo.BE.Song;
 
 // Business logic
 import dk.easv.demo.BLL.PlaylistManager;
-import dk.easv.demo.BLL.SongManager;
+import dk.easv.demo.BLL.MusicManager;
 
 // Java standard
 import javafx.collections.FXCollections;
@@ -22,6 +22,7 @@ import javafx.stage.Stage;
 import java.net.URL;
 import java.util.List;
 import java.util.ResourceBundle;
+
 /**
  * Controller for creating/editing playlists
  */
@@ -33,7 +34,7 @@ public class PlaylistEditorController implements Initializable {
     @FXML private Button cancelButton;
 
     private PlaylistManager playlistManager;
-    private SongManager songManager;
+    private MusicManager musicManager;
     private ObservableList<Song> allSongs;
     private ObservableList<Song> playlistSongs;
     private Playlist currentPlaylist;
@@ -44,7 +45,7 @@ public class PlaylistEditorController implements Initializable {
     public void initialize(URL location, ResourceBundle resources) {
         try {
             playlistManager = new PlaylistManager();
-            songManager = new SongManager();
+            musicManager = new MusicManager();
             allSongs = FXCollections.observableArrayList();
             playlistSongs = FXCollections.observableArrayList();
 
@@ -62,7 +63,7 @@ public class PlaylistEditorController implements Initializable {
     // Load all songs from database
     private void loadAllSongs() {
         try {
-            List<Song> songs = songManager.getAllSongs();
+            List<Song> songs = musicManager.getAllSongs();
             allSongs.setAll(songs);
         } catch (Exception e) {
             showErrorDialog("Error loading songs: " + e.getMessage());
