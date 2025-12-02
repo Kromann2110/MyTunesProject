@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/17.0.2-ea"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="dk.easv.demo.GUI.Controller.PlaylistEditorController"
+      spacing="10"
+      style="-fx-padding: 20;">
+
+    <Label text="Playlist Editor" style="-fx-font-size: 18; -fx-font-weight: bold;"/>
+
+    <HBox spacing="15">
+        <VBox spacing="10" prefWidth="300">
+            <Label text="Available Songs" style="-fx-font-weight: bold;"/>
+            <ListView fx:id="availableSongsListView" prefHeight="300"/>
+        </VBox>
+
+        <VBox spacing="10" prefWidth="300">
+            <Label text="Playlist Songs" style="-fx-font-weight: bold;"/>
+            <ListView fx:id="playlistSongsListView" prefHeight="300"/>
+        </VBox>
+    </HBox>
+
+    <HBox spacing="10" alignment="CENTER">
+        <Button text="Add to Playlist" onAction="#addSongToPlaylist" prefWidth="120"/>
+        <Button text="Remove from Playlist" onAction="#removeSongFromPlaylist" prefWidth="120"/>
+        <Button text="Save Playlist" onAction="#savePlaylist" prefWidth="120"
+                style="-fx-background-color: #4CAF50; -fx-text-fill: white;"/>
+        <Button fx:id="cancelButton" text="Cancel" onAction="#cancel" prefWidth="120"
+                style="-fx-background-color: #f44336; -fx-text-fill: white;"/>
+    </HBox>
+
+    <HBox spacing="10">
+        <Label text="Playlist Name:"/>
+        <TextField fx:id="playlistNameField" prefWidth="200"/>
+    </HBox>
+</VBox>

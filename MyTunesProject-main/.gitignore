@@ -1,0 +1,18 @@
+# Database configuration (contains passwords)
+src/main/resources/database.properties
+src/main/resources/database.properties
+
+# Build output
+target/
+
+# IDE files
+.idea/
+*.iml
+
+# Music files (don't commit copyrighted music)
+music/
+*.mp3
+*.wav
+
+# Logs
+*.log
