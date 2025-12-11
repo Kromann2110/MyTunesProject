@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.cell.PropertyValueFactory?>
+
+<VBox xmlns="http://javafx.com/javafx/17.0.2-ea"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="dk.easv.demo.GUI.Controller.MainController"
+      spacing="10"
+      style="-fx-padding: 15;">
+
+    <!-- Header Section -->
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="MyTunes Music Player" style="-fx-font-size: 20; -fx-font-weight: bold;"/>
+    </HBox>
+
+    <!-- Now Playing Section - FIXED: Shows song title, not artist -->
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label fx:id="nowPlayingLabel" text="No song selected"
+               style="-fx-font-size: 16; -fx-font-weight: bold; -fx-text-fill: #0066cc;"/>
+    </HBox>
+
+    <!-- Media Controls Section -->
+    <HBox spacing="20" alignment="CENTER_LEFT" style="-fx-border-color: #cccccc; -fx-border-width: 1; -fx-padding: 10;">
+        <!-- Playback Controls -->
+        <VBox spacing="5" alignment="CENTER_LEFT">
+            <Label text="Media Controls" style="-fx-font-weight: bold;"/>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Button fx:id="playButton" text="Play" onAction="#playMusic"
+                        prefWidth="70" style="-fx-font-weight: bold;"/>
+                <Button fx:id="pauseButton" text="Pause" onAction="#pauseMusic"
+                        prefWidth="70" style="-fx-font-weight: bold;"/>
+                <Button fx:id="stopButton" text="Stop" onAction="#stopMusic"
+                        prefWidth="70" style="-fx-font-weight: bold;"/>
+            </HBox>
+        </VBox>
+
+        <!-- Volume Control -->
+        <VBox spacing="5" alignment="CENTER_LEFT">
+            <Label text="Volume:"/>
+            <Slider fx:id="volumeSlider" prefWidth="100" min="0" max="100" value="50"/>
+        </VBox>
+
+        <!-- Progress Bar - FIXED: Now supports both click and drag -->
+        <VBox spacing="5" alignment="CENTER_LEFT">
+            <HBox spacing="10" alignment="CENTER">
+                <Label fx:id="elapsedTimeLabel" text="0:00" style="-fx-text-fill: #666; -fx-font-weight: bold;"/>
+                <Slider fx:id="progressSlider" prefWidth="250" min="0" max="100" value="0"
+                        style="-fx-cursor: hand;"/>
+                <Label fx:id="totalTimeLabel" text="0:00" style="-fx-text-fill: #666; -fx-font-weight: bold;"/>
+            </HBox>
+        </VBox>
+    </HBox>
+
+    <!-- Main Content Area - Three columns layout -->
+    <HBox spacing="20" VBox.vgrow="ALWAYS">
+
+        <!-- Left: Playlists Section -->
+        <VBox spacing="10" prefWidth="300">
+            <Label text="Playlists" style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+
+            <TableView fx:id="playlistsTableView" prefHeight="250">
+                <columns>
+                    <TableColumn fx:id="playlistNameColumn" text="Name" prefWidth="120">
+                        <cellValueFactory>
+                            <PropertyValueFactory property="name" />
+                        </cellValueFactory>
+                    </TableColumn>
+                    <TableColumn fx:id="playlistSongsColumn" text="Songs" prefWidth="70">
+                        <cellValueFactory>
+                            <PropertyValueFactory property="songCount" />
+                        </cellValueFactory>
+                    </TableColumn>
+                    <TableColumn fx:id="playlistTimeColumn" text="Duration" prefWidth="80">
+                        <cellValueFactory>
+                            <PropertyValueFactory property="totalDuration" />
+                        </cellValueFactory>
+                    </TableColumn>
+                </columns>
+            </TableView>
+
+            <HBox spacing="10">
+                <Button fx:id="newPlaylistButton" text="New" onAction="#createNewPlaylist" prefWidth="70"/>
+                <Button fx:id="editPlaylistButton" text="Edit" onAction="#editPlaylist" prefWidth="70"/>
+                <Button fx:id="deletePlaylistButton" text="Delete" onAction="#deletePlaylist" prefWidth="70"/>
+            </HBox>
+        </VBox>
+
+        <!-- Middle: Songs on Selected Playlist -->
+        <VBox spacing="10" prefWidth="250">
+            <Label text="Playlist Songs" style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+
+            <ListView fx:id="playlistSongsListView" prefHeight="250"/>
+
+            <HBox spacing="10">
+                <Button fx:id="moveUpButton" text="Up" onAction="#moveSongUp" prefWidth="70"/>
+                <Button fx:id="moveDownButton" text="Down" onAction="#moveSongDown" prefWidth="70"/>
+                <Button fx:id="removeFromPlaylistButton" text="Remove" onAction="#removeSongFromPlaylist" prefWidth="80"/>
+            </HBox>
+        </VBox>
+
+        <!-- Right: All Songs Section - FIXED: Shows song titles in Title column -->
+        <VBox spacing="10" prefWidth="400" HBox.hgrow="ALWAYS">
+            <Label text="All Songs" style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+
+            <TableView fx:id="songsTableView" prefHeight="250">
+                <columns>
+                    <!-- FIX: Title column shows SONG TITLE -->
+                    <TableColumn fx:id="songTitleColumn" text="Title" prefWidth="150">
+                        <cellValueFactory>
+                            <PropertyValueFactory property="title" />
+                        </cellValueFactory>
+                    </TableColumn>
+                    <!-- FIX: Artist column shows ARTIST NAME -->
+                    <TableColumn fx:id="songArtistColumn" text="Artist" prefWidth="120">
+                        <cellValueFactory>
+                            <PropertyValueFactory property="artist" />
+                        </cellValueFactory>
+                    </TableColumn>
+                    <TableColumn fx:id="songCategoryColumn" text="Genre" prefWidth="80">
+                        <cellValueFactory>
+                            <PropertyValueFactory property="category" />
+                        </cellValueFactory>
+                    </TableColumn>
+                    <TableColumn fx:id="songTimeColumn" text="Time" prefWidth="60">
+                        <cellValueFactory>
+                            <PropertyValueFactory property="formattedDuration" />
+                        </cellValueFactory>
+                    </TableColumn>
+                </columns>
+            </TableView>
+
+            <HBox spacing="10">
+                <Button fx:id="newSongButton" text="New Song" onAction="#createNewSong" prefWidth="90"/>
+                <Button fx:id="editSongButton" text="Edit" onAction="#editSong" prefWidth="70"/>
+                <Button fx:id="deleteSongButton" text="Delete" onAction="#deleteSong" prefWidth="70"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="addToPlaylistButton" text="Add to Playlist"
+                        onAction="#addSongToPlaylist" prefWidth="120"/>
+            </HBox>
+        </VBox>
+    </HBox>
+
+    <!-- Footer Buttons -->
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Button fx:id="closeButton" text="Close" onAction="#closeApplication"
+                prefWidth="80" style="-fx-font-weight: bold;"/>
+    </HBox>
+</VBox>
