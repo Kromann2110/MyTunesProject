@@ -45,20 +45,6 @@ public class MainController implements Initializable {
 
     @FXML private ListView<Song> playlistSongsListView;
 
-    @FXML private Button btnAddToPlaylist;
-    @FXML private Button btnCreatePlaylist;
-    @FXML private Button btnDeleteSong;
-    @FXML private Button btnDeletePlaylist;
-    @FXML private Button btnMoveUp;
-    @FXML private Button btnMoveDown;
-    @FXML private Button btnRemoveFromPlaylist;
-    @FXML private Button btnClose;
-    @FXML private Button btnImportSongs;
-
-    @FXML private Button newPlaylistButton;
-    @FXML private Button editPlaylistButton;
-    @FXML private Button newSongButton;
-    @FXML private Button editSongButton;
     @FXML private Button closeButton;
 
     private MusicManager musicManager;

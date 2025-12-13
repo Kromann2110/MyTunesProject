@@ -14,7 +14,7 @@ public class MainApp extends Application {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/dk/easv/demo/GUI/MainView.fxml"));
         Parent root = loader.load();
 
-        // Get the controller to setup shutdown hook - FIXED: Use MainController instead of MainViewController
+        // Get the controller to setup shutdown hook
         MainController controller = loader.getController();
         primaryStage.setOnHidden(e -> controller.shutdown());
 
